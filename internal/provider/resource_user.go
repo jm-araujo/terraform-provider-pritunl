@@ -100,6 +100,12 @@ func resourceUser() *schema.Resource {
 				Optional:    true,
 				Description: "Bypass secondary authentication such as the PIN and two-factor authentication. Use for server users that can't provide a two-factor code.",
 			},
+			"pin": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Sensitive:   true,
+				Description: "The PIN for user authentication.",
+			},
 		},
 		CreateContext: resourceUserCreate,
 		ReadContext:   resourceUserRead,
@@ -170,12 +176,20 @@ func resourceUserUpdate(ctx context.Context, d *schema.ResourceData, meta interf
 		return diag.FromErr(err)
 	}
 
+	updatedUser := user.ToNewUser()
+
+	if d.HasChange("pin") {
+		if v, ok := d.GetOk("pin"); ok {
+			updatedUser.Pin = v.(string)
+		}
+	}
+
 	if v, ok := d.GetOk("name"); ok {
-		user.Name = v.(string)
+		updatedUser.Name = v.(string)
 	}
 
 	if v, ok := d.GetOk("organization_id"); ok {
-		user.Organization = v.(string)
+		updatedUser.Organization = v.(string)
 	}
 
 	if d.HasChange("groups") {
@@ -183,16 +197,16 @@ func resourceUserUpdate(ctx context.Context, d *schema.ResourceData, meta interf
 		for _, v := range d.Get("groups").([]interface{}) {
 			groups = append(groups, v.(string))
 		}
-		user.Groups = groups
+		updatedUser.Groups = groups
 	}
 
 	if v, ok := d.GetOk("email"); ok {
-		user.Email = v.(string)
+		updatedUser.Email = v.(string)
 	}
 
 	// TODO: Fixme
 	if v, ok := d.GetOk("disabled"); ok {
-		user.Disabled = v.(bool)
+		updatedUser.Disabled = v.(bool)
 	}
 
 	if d.HasChange("port_forwarding") {
@@ -200,7 +214,7 @@ func resourceUserUpdate(ctx context.Context, d *schema.ResourceData, meta interf
 		for _, v := range d.Get("port_forwarding").([]interface{}) {
 			portForwarding = append(portForwarding, v.(map[string]interface{}))
 		}
-		user.PortForwarding = portForwarding
+		updatedUser.PortForwarding = portForwarding
 	}
 
 	if d.HasChange("network_links") {
@@ -208,15 +222,15 @@ func resourceUserUpdate(ctx context.Context, d *schema.ResourceData, meta interf
 		for _, v := range d.Get("network_links").([]interface{}) {
 			networkLinks = append(networkLinks, v.(string))
 		}
-		user.NetworkLinks = networkLinks
+		updatedUser.NetworkLinks = networkLinks
 	}
 
 	if v, ok := d.GetOk("client_to_client"); ok {
-		user.ClientToClient = v.(bool)
+		updatedUser.ClientToClient = v.(bool)
 	}
 
 	if v, ok := d.GetOk("auth_type"); ok {
-		user.AuthType = v.(string)
+		updatedUser.AuthType = v.(string)
 	}
 
 	if d.HasChange("mac_addresses") {
@@ -224,7 +238,7 @@ func resourceUserUpdate(ctx context.Context, d *schema.ResourceData, meta interf
 		for _, v := range d.Get("mac_addresses").([]interface{}) {
 			macAddresses = append(macAddresses, v.(string))
 		}
-		user.MacAddresses = macAddresses
+		updatedUser.MacAddresses = macAddresses
 	}
 
 	if d.HasChange("dns_servers") {
@@ -232,18 +246,18 @@ func resourceUserUpdate(ctx context.Context, d *schema.ResourceData, meta interf
 		for _, v := range d.Get("dns_servers").([]interface{}) {
 			dnsServers = append(dnsServers, v.(string))
 		}
-		user.DnsServers = dnsServers
+		updatedUser.DnsServers = dnsServers
 	}
 
 	if v, ok := d.GetOk("dns_suffix"); ok {
-		user.DnsSuffix = v.(string)
+		updatedUser.DnsSuffix = v.(string)
 	}
 
 	if v, ok := d.GetOk("bypass_secondary"); ok {
-		user.BypassSecondary = v.(bool)
+		updatedUser.BypassSecondary = v.(bool)
 	}
 
-	err = apiClient.UpdateUser(d.Id(), user)
+	err = apiClient.UpdateUser(d.Id(), &updatedUser)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -279,7 +293,7 @@ func resourceUserCreate(_ context.Context, d *schema.ResourceData, meta interfac
 		groups = append(groups, v.(string))
 	}
 
-	userData := pritunl.User{
+	userData := pritunl.NewUser{
 		Name:            d.Get("name").(string),
 		Organization:    d.Get("organization_id").(string),
 		AuthType:        d.Get("auth_type").(string),
@@ -293,6 +307,7 @@ func resourceUserCreate(_ context.Context, d *schema.ResourceData, meta interfac
 		MacAddresses:    macAddresses,
 		BypassSecondary: d.Get("bypass_secondary").(bool),
 		Groups:          groups,
+		Pin:             d.Get("pin").(string),
 	}
 
 	user, err := apiClient.CreateUser(userData)

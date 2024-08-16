@@ -19,8 +19,8 @@ type Client interface {
 	DeleteOrganization(name string) error
 
 	GetUser(id string, orgId string) (*User, error)
-	CreateUser(newUser User) (*User, error)
-	UpdateUser(id string, user *User) error
+	CreateUser(newUser NewUser) (*User, error)
+	UpdateUser(id string, user *NewUser) error
 	DeleteUser(id string, orgId string) error
 
 	GetServers() ([]Server, error)
@@ -693,7 +693,7 @@ func (c client) GetUser(id string, orgId string) (*User, error) {
 	return &user, nil
 }
 
-func (c client) CreateUser(newUser User) (*User, error) {
+func (c client) CreateUser(newUser NewUser) (*User, error) {
 	jsonData, err := json.Marshal(newUser)
 	if err != nil {
 		return nil, fmt.Errorf("CreateUser: Error on marshalling data: %s", err)
@@ -726,7 +726,7 @@ func (c client) CreateUser(newUser User) (*User, error) {
 	return nil, fmt.Errorf("empty users response")
 }
 
-func (c client) UpdateUser(id string, user *User) error {
+func (c client) UpdateUser(id string, user *NewUser) error {
 	jsonData, err := json.Marshal(user)
 	if err != nil {
 		return fmt.Errorf("UpdateUser: Error on marshalling data: %s", err)
